@@ -7,14 +7,18 @@
 #endif
 
 #ifndef AppVersion
-  #define AppVersion "0.1.0"
+  #define AppVersion "0.1.1"
 #endif
 
 [Setup]
 AppId={{8A42E58E-22D1-4BA1-A21A-7B8DD4B72D1C}
 AppName=GhostCapture
 AppVersion={#AppVersion}
-AppPublisher=GhostCapture
+AppPublisher=Phantomguy7845
+AppPublisherURL=https://github.com/Phantomguy7845/GhostCapture
+AppSupportURL=https://github.com/Phantomguy7845/GhostCapture/issues
+AppUpdatesURL=https://github.com/Phantomguy7845/GhostCapture/releases
+AppCopyright=Copyright (c) Phantomguy7845
 DefaultDirName={autopf}\GhostCapture
 DefaultGroupName=GhostCapture
 UninstallDisplayIcon={app}\GhostCapture.exe
@@ -23,9 +27,18 @@ ArchitecturesInstallIn64BitMode=x64compatible
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
+SetupIconFile=assets\ghostcapture.ico
+WizardImageFile=assets\wizard-sidebar.bmp
+WizardSmallImageFile=assets\wizard-small.bmp
 OutputDir={#OutputDir}
 OutputBaseFilename=GhostCapture-Setup
 PrivilegesRequired=admin
+VersionInfoCompany=Phantomguy7845
+VersionInfoDescription=Latency-first Android mirroring for Windows
+VersionInfoProductName=GhostCapture
+VersionInfoProductVersion={#AppVersion}
+VersionInfoVersion={#AppVersion}
+VersionInfoTextVersion={#AppVersion}
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -42,4 +55,3 @@ Name: "{autodesktop}\GhostCapture"; Filename: "{app}\GhostCapture.exe"; Tasks: d
 
 [Run]
 Filename: "{app}\GhostCapture.exe"; Description: "Launch GhostCapture"; Flags: nowait postinstall skipifsilent
-

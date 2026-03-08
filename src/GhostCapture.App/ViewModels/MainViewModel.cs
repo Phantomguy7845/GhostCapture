@@ -2,6 +2,7 @@ using GhostCapture.App.Commands;
 using GhostCapture.App.Infrastructure;
 using GhostCapture.App.Models;
 using GhostCapture.App.Services;
+using System.IO;
 using System.Windows.Input;
 
 namespace GhostCapture.App.ViewModels;
@@ -39,9 +40,19 @@ public sealed class MainViewModel : ObservableObject
 
     public string ConnectionDetail => _connectionState.Detail;
 
+    public string GuidanceTitle => string.IsNullOrWhiteSpace(ErrorMessage) ? _connectionState.GuidanceTitle : "Need attention";
+
+    public string GuidanceDetail => string.IsNullOrWhiteSpace(ErrorMessage) ? _connectionState.GuidanceDetail : ErrorMessage;
+
+    public bool GuidanceVisible => !string.IsNullOrWhiteSpace(ErrorMessage) || _connectionState.HasSupplementalGuidance;
+
+    public bool GuidanceNeedsAttention => !string.IsNullOrWhiteSpace(ErrorMessage) || _connectionState.NeedsAttention;
+
     public string StatusButtonLabel => _connectionState.StatusButtonLabel;
 
-    public string StartButtonLabel => HasReadyDevice ? "Start Screen" : "Waiting For Device";
+    public string StartButtonLabel => HasReadyDevice
+        ? _connectionState.Transport == ConnectionTransport.Usb ? "Start USB Screen" : "Start Wi-Fi Screen"
+        : "Waiting For Device";
 
     public bool HasReadyDevice => _connectionState.HasReadyDevice;
 
@@ -63,7 +74,13 @@ public sealed class MainViewModel : ObservableObject
     public string ErrorMessage
     {
         get => _errorMessage;
-        private set => SetProperty(ref _errorMessage, value);
+        private set
+        {
+            if (SetProperty(ref _errorMessage, value))
+            {
+                NotifyGuidanceChanged();
+            }
+        }
     }
 
     public async Task RefreshAsync()
@@ -84,7 +101,7 @@ public sealed class MainViewModel : ObservableObject
         }
         catch (Exception exception)
         {
-            ErrorMessage = exception.Message;
+            ErrorMessage = FormatUserFacingError(exception, "refresh");
         }
         finally
         {
@@ -114,7 +131,7 @@ public sealed class MainViewModel : ObservableObject
         }
         catch (Exception exception)
         {
-            ErrorMessage = exception.Message;
+            ErrorMessage = FormatUserFacingError(exception, "launch");
         }
         finally
         {
@@ -134,6 +151,30 @@ public sealed class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(StatusButtonLabel));
         OnPropertyChanged(nameof(StartButtonLabel));
         OnPropertyChanged(nameof(HasReadyDevice));
+        NotifyGuidanceChanged();
+    }
+
+    private void NotifyGuidanceChanged()
+    {
+        OnPropertyChanged(nameof(GuidanceTitle));
+        OnPropertyChanged(nameof(GuidanceDetail));
+        OnPropertyChanged(nameof(GuidanceVisible));
+        OnPropertyChanged(nameof(GuidanceNeedsAttention));
+    }
+
+    private static string FormatUserFacingError(Exception exception, string operation)
+    {
+        if (exception is FileNotFoundException)
+        {
+            return "GhostCapture cannot find its bundled adb or scrcpy files. Reinstall the app or rebuild the installer.";
+        }
+
+        return operation switch
+        {
+            "refresh" => "GhostCapture could not talk to ADB right now. Close other phone tools if needed, then refresh again.",
+            "launch" => "GhostCapture could not launch screen mirroring. Reopen the app or reinstall if the bundled tools are missing.",
+            _ => "GhostCapture ran into a problem. Try the action again.",
+        };
     }
 
     private void RefreshCommandState()

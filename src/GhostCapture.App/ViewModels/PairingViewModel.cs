@@ -1,6 +1,7 @@
 using GhostCapture.App.Infrastructure;
 using GhostCapture.App.Models;
 using GhostCapture.App.Services;
+using System.IO;
 using System.Windows.Media.Imaging;
 
 namespace GhostCapture.App.ViewModels;
@@ -14,7 +15,7 @@ public sealed class PairingViewModel : ObservableObject
     private CancellationTokenSource? _pairingCancellationTokenSource;
     private WirelessPairingSession _session;
     private BitmapSource? _qrCodeImage;
-    private string _statusMessage = "Generate a QR payload, scan it from the phone, then wait for automatic pairing.";
+    private string _statusMessage = "Open Wireless debugging on Android, then scan this QR code.";
     private bool _isBusy;
 
     public PairingViewModel(
@@ -74,7 +75,7 @@ public sealed class PairingViewModel : ObservableObject
 
         _session = _wirelessPairingService.CreateSession();
         QrCodeImage = _qrCodeImageService.GenerateQrCode(_session.QrPayload);
-        StatusMessage = "Fresh Wi-Fi debugging payload ready. Scan the QR payload from the phone.";
+        StatusMessage = "New Wi-Fi QR ready. Scan it from Android.";
         OnPropertyChanged(nameof(ServiceName));
         OnPropertyChanged(nameof(Secret));
         OnPropertyChanged(nameof(QrPayload));
@@ -115,7 +116,9 @@ public sealed class PairingViewModel : ObservableObject
         }
         catch (Exception exception)
         {
-            StatusMessage = exception.Message;
+            StatusMessage = exception is FileNotFoundException
+                ? "GhostCapture cannot find its bundled adb or scrcpy files."
+                : "Wi-Fi pairing could not continue right now. Try a new QR code.";
         }
         finally
         {

@@ -20,6 +20,10 @@
         <SolidColorBrush x:Key="InputBackgroundBrush" Color="#F6EDE3" />
         <SolidColorBrush x:Key="InputBorderBrush" Color="#D1BBA8" />
         <SolidColorBrush x:Key="DangerBrush" Color="#A65843" />
+        <SolidColorBrush x:Key="WarningSoftBrush" Color="#FBEEE4" />
+        <SolidColorBrush x:Key="WarningBorderBrush" Color="#D9B19A" />
+        <SolidColorBrush x:Key="SuccessSoftBrush" Color="#F2ECE3" />
+        <SolidColorBrush x:Key="SuccessBorderBrush" Color="#D8C4B1" />
 
         <Style TargetType="TextBlock">
             <Setter Property="FontFamily" Value="{StaticResource BodyFont}" />

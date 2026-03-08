@@ -2,6 +2,11 @@
 
 GhostCapture is a Windows desktop launcher for fast Android screen mirroring built on top of `adb` and `scrcpy`.
 
+[![Release](https://img.shields.io/github/v/release/Phantomguy7845/GhostCapture?display_name=tag&sort=semver)](https://github.com/Phantomguy7845/GhostCapture/releases/latest)
+![Platform](https://img.shields.io/badge/platform-Windows%2010%2B-8A5B3B)
+![.NET](https://img.shields.io/badge/.NET-8.0-D6A773)
+![Packaging](https://img.shields.io/badge/installer-Inno%20Setup-5D3E2A)
+
 It is designed around a simple flow:
 
 - open the app
@@ -9,6 +14,16 @@ It is designed around a simple flow:
 - start mirroring immediately over USB
 - pair once with Android Wi-Fi debugging by scanning a QR code
 - reconnect wirelessly with the same low-friction UI
+
+## Screenshots
+
+### Home
+
+![GhostCapture home](docs/assets/screenshot-home.png)
+
+### Wi-Fi pairing
+
+![GhostCapture Wi-Fi pairing](docs/assets/screenshot-wifi-pairing.png)
 
 ## What it does
 
@@ -19,6 +34,7 @@ It is designed around a simple flow:
 - Pairs with wireless debugging through `adb mdns services`, `adb pair`, and connect fallback
 - Launches `scrcpy` with a latency-first profile
 - Starts `scrcpy` without a terminal window
+- Surfaces friendlier device and pairing states for common connection problems
 - Packages everything into a Windows installer instead of a portable tools folder
 
 ## Tech stack
@@ -63,6 +79,10 @@ powershell -ExecutionPolicy Bypass -File .\scripts\Build-Installer.ps1
 Installer output:
 
 - `artifacts\installer\GhostCapture-Setup.exe`
+
+Latest download:
+
+- <https://github.com/Phantomguy7845/GhostCapture/releases/latest>
 
 ## Usage
 

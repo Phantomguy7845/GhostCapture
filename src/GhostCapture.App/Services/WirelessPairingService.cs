@@ -34,7 +34,7 @@ public sealed class WirelessPairingService : IWirelessPairingService
         IProgress<string>? progress = null,
         CancellationToken cancellationToken = default)
     {
-        Report(progress, "Waiting for Android to publish the pairing service after the QR scan...");
+        Report(progress, "Waiting for Android to scan the QR code...");
         DiagnosticLog.Write("pairing", $"Waiting for pairing service '{session.ServiceName}'.");
 
         var pairingService = await WaitForServiceAsync(
@@ -48,11 +48,11 @@ public sealed class WirelessPairingService : IWirelessPairingService
             DiagnosticLog.Write("pairing", $"Pairing service '{session.ServiceName}' was not discovered before timeout.");
             return new WirelessPairingResult
             {
-                Message = "Timed out waiting for the phone to scan the Wi-Fi debugging QR code.",
+                Message = "No QR scan was detected. Keep Wireless debugging open and make sure the phone and PC are on the same Wi-Fi.",
             };
         }
 
-        Report(progress, $"QR scan detected. Pairing with {pairingService.Endpoint}...");
+        Report(progress, "QR scan detected. Finishing secure pairing...");
         DiagnosticLog.Write("pairing", $"Discovered pairing service '{pairingService.InstanceName}' at {pairingService.Endpoint}.");
 
         var pairingResult = await _adbService.PairAsync(pairingService.Endpoint, session.Secret, cancellationToken);
@@ -64,11 +64,11 @@ public sealed class WirelessPairingService : IWirelessPairingService
         {
             return new WirelessPairingResult
             {
-                Message = BuildAdbFailureMessage(pairingResult, "adb pair failed."),
+                Message = BuildPairingFailureMessage(pairingResult),
             };
         }
 
-        Report(progress, "Pairing accepted. Waiting for the wireless device to come online...");
+        Report(progress, "Pairing accepted. Waiting for Android to come online...");
         var readyDevice = await WaitForWirelessDeviceAsync(TimeSpan.FromSeconds(20), progress, cancellationToken);
         if (readyDevice is not null)
         {
@@ -81,11 +81,11 @@ public sealed class WirelessPairingService : IWirelessPairingService
             };
         }
 
-        Report(progress, "Pairing accepted. Looking for the secure wireless connect service...");
+        Report(progress, "Pairing worked. Looking for the wireless connection...");
         var connectService = await WaitForMatchingConnectServiceAsync(pairingService.Endpoint, TimeSpan.FromSeconds(10), progress, cancellationToken);
         if (connectService is not null)
         {
-            Report(progress, $"Requesting ADB wireless connection to {connectService.Endpoint}...");
+            Report(progress, "Connecting GhostCapture to Android over Wi-Fi...");
             DiagnosticLog.Write("pairing", $"Discovered connect service '{connectService.InstanceName}' at {connectService.Endpoint}.");
 
             var connectResult = await _adbService.ConnectAsync(connectService.Endpoint, cancellationToken);
@@ -107,7 +107,7 @@ public sealed class WirelessPairingService : IWirelessPairingService
             IsSuccess = readyDevice is not null,
             Message = readyDevice is not null
                 ? "Wireless debugging connected."
-                : "Pairing succeeded but no wireless device became ready yet.",
+                : "Pairing finished, but Android did not come online over Wi-Fi. Leave Wireless debugging open and try New QR.",
             Device = readyDevice,
         };
     }
@@ -141,7 +141,16 @@ public sealed class WirelessPairingService : IWirelessPairingService
                     ? "none"
                     : string.Join(", ", services.Select(service => $"{service.InstanceName} {service.ServiceType} {service.Endpoint}"));
 
-                Report(progress, $"Still waiting for the phone to scan the QR code. Visible mDNS services: {visibleServices}.");
+                if (attempt == 1)
+                {
+                    Report(progress, "Waiting for Android to scan the QR code...");
+                }
+                else
+                {
+                    Report(progress, "Still waiting for the QR scan. Keep Wireless debugging open on the phone.");
+                }
+
+                DiagnosticLog.Write("pairing", $"Visible mDNS services while waiting for QR scan: {visibleServices}.");
             }
 
             await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
@@ -174,7 +183,15 @@ public sealed class WirelessPairingService : IWirelessPairingService
                     ? "none"
                     : string.Join(", ", devices.Select(device => $"{device.Serial} [{device.State}/{device.Transport}]"));
 
-                Report(progress, $"Still waiting for the wireless device to come online. Visible devices: {visibleDevices}.");
+                if (attempt == 1)
+                {
+                    Report(progress, "Waiting for Android to come online over Wi-Fi...");
+                }
+                else
+                {
+                    Report(progress, "Still waiting for Android to finish connecting over Wi-Fi...");
+                }
+
                 DiagnosticLog.Write("pairing", $"Waiting for wireless device. Visible devices: {visibleDevices}.");
             }
 
@@ -213,7 +230,16 @@ public sealed class WirelessPairingService : IWirelessPairingService
                     ? "none"
                     : string.Join(", ", services.Select(service => $"{service.InstanceName} {service.ServiceType} {service.Endpoint}"));
 
-                Report(progress, $"Waiting for the secure wireless connect service. Visible mDNS services: {visibleServices}.");
+                if (attempt == 1)
+                {
+                    Report(progress, "Waiting for the secure wireless connection...");
+                }
+                else
+                {
+                    Report(progress, "Still waiting for Android to expose the Wi-Fi connection...");
+                }
+
+                DiagnosticLog.Write("pairing", $"Visible mDNS services while waiting for connect service: {visibleServices}.");
             }
 
             await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
@@ -222,19 +248,32 @@ public sealed class WirelessPairingService : IWirelessPairingService
         return null;
     }
 
-    private static string BuildAdbFailureMessage(ProcessResult result, string fallbackMessage)
+    private static string BuildPairingFailureMessage(ProcessResult result)
     {
-        if (!string.IsNullOrWhiteSpace(result.StandardError))
+        var combined = string.Join(
+            Environment.NewLine,
+            new[] { result.StandardOutput, result.StandardError }.Where(value => !string.IsNullOrWhiteSpace(value))).Trim();
+
+        if (combined.Contains("mdns daemon unavailable", StringComparison.OrdinalIgnoreCase))
         {
-            return result.StandardError.Trim();
+            return "Windows could not discover Wi-Fi debugging. Check the local network, firewall, or VPN, then try a new QR code.";
         }
 
-        if (!string.IsNullOrWhiteSpace(result.StandardOutput))
+        if (combined.Contains("failed to connect", StringComparison.OrdinalIgnoreCase) ||
+            combined.Contains("unable to connect", StringComparison.OrdinalIgnoreCase) ||
+            combined.Contains("connection refused", StringComparison.OrdinalIgnoreCase))
         {
-            return result.StandardOutput.Trim();
+            return "GhostCapture found the phone but could not finish secure pairing. Keep Wireless debugging open and try New QR.";
         }
 
-        return fallbackMessage;
+        if (combined.Contains("password", StringComparison.OrdinalIgnoreCase) ||
+            combined.Contains("secret", StringComparison.OrdinalIgnoreCase) ||
+            combined.Contains("auth", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Android rejected the pairing secret. Generate a new QR code and scan it again.";
+        }
+
+        return "Wi-Fi pairing did not complete. Generate a new QR code and keep the phone on the pairing screen.";
     }
 
     private static void Report(IProgress<string>? progress, string message)
