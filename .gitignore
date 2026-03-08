@@ -1,0 +1,13 @@
+bin/
+obj/
+.vs/
+artifacts/
+scrcpy-win64-v3.3.4/
+*.user
+*.suo
+*.cache
+*.pdb
+*.log
+*.tmp
+Thumbs.db
+Desktop.ini
